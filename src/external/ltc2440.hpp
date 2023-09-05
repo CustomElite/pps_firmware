@@ -51,8 +51,6 @@ namespace External::LTC2440
         {}
     };
 
-    bool ClearConversion() noexcept;
-
     class LTC2440 : Properties
     {
     public:
@@ -75,7 +73,7 @@ namespace External::LTC2440
         {
             spi_read_blocking();
         }
-        bool ConversionReady() const { return m_ConvRdy; }
+        bool ConversionReady() const { return (!m_conversions.Empty()); }
         bool ClearConversion() noexcept
         {
             LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);     
@@ -97,7 +95,6 @@ namespace External::LTC2440
 
             int32_t output = m_conversions.Pop();
             output -= BIN_OFFSET;
-            m_ConvRdy = (!m_conversions.Empty());
             
             return output;
         }
@@ -105,11 +102,10 @@ namespace External::LTC2440
     private:
         constexpr static const float V_REF = 4.096f;
         constexpr static const uint32_t MAX_CODE = 0xFFFFFF;
-        constexpr static const uint32_t BIN_OFFSET = 0x20000000;
+        constexpr static const uint32_t BIN_OFFSET = 0x10000000;
 
     private:
         buffer_t m_conversions;
-        volatile bool m_ConvRdy = false;
         OverSampling m_OSR;
 
         union {
@@ -123,7 +119,7 @@ namespace External::LTC2440
         {
             LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);
             LL_mDelay( 1U );
-            for (size_t i = 1; i >= 0; --i)
+            for (int8_t i = 1; i >= 0; --i)
             {
                 LL_SPI_TransmitData16(SPI, m_TX.word[i]);
                 while(!LL_SPI_IsActiveFlag_TXE(SPI));
@@ -132,9 +128,8 @@ namespace External::LTC2440
                 m_RX.word[i] = LL_SPI_ReceiveData16(SPI);
             }
             LL_GPIO_SetOutputPin(CS_Port, CS_Pin);
-    
+
             m_conversions.Push(m_RX.dword);
-            m_ConvRdy = true;
         }
     };
 }

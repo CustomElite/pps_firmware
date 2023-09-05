@@ -9,13 +9,13 @@ int main(void)
     /* System interrupt init*/
     __NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-    LL_GPIO_AF_Remap_SWJ_NOJTAG();
+    //LL_GPIO_AF_Remap_SWJ_NOJTAG();
     
     /* Initialize all configured peripherals */
     SysClock_Config();
     GPIO_Init();
     SPI2_Init();
-
+    ADC.Enable();
     Serial::Init();
     Serial::Print("Hello World!!!\n");
 
@@ -37,7 +37,7 @@ int main(void)
             }
 
             average /= avgIdx;
-            Serial::Printf("Average: %d | Time: %dms\n", average, (timer / 1000));
+            Serial::Printf("ADC Average: %d | # Reads: %d\n", average, avgIdx);
             average = 0;
             avgIdx = 0;
             timer = GetMilli();
