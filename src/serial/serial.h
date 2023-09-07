@@ -4,10 +4,12 @@
 
 #include <cstdarg>
 #include <string>
+#include <stdint.h>
 
-void usart_isr();
 namespace Serial
 {
+    
+
 void Init();
 char Read();
 int Print(const std::string& str);

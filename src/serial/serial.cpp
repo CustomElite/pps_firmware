@@ -1,12 +1,14 @@
 #include "serial.h"
 #include "printf.h"
+#include "common/containers/FIFO.hpp"
 
 //static void usart_write(uint8_t c);
 
-static const uint8_t RxBufferSize = 64U;
+constexpr static uint8_t RxBufferSize = 64u;
 
-static volatile uint8_t _rxBuffer[RxBufferSize] = {0};
-static volatile uint8_t _rxBufHead = 0, _rxBufTail = 0;
+using buffer_t = Containers::FIFO<uint8_t, RxBufferSize, true>;
+
+static buffer_t s_RxBuffer;
 
 static inline void usart_write(uint8_t c)
 {
@@ -45,17 +47,16 @@ namespace Serial
     
     char Read()
     {
-        if (_rxBufTail == _rxBufHead) return 0;
+        if (s_RxBuffer.Empty()) return 0;
     
-        uint8_t c = _rxBuffer[_rxBufTail];
-        _rxBufTail = (_rxBufTail + 1) % 64;
+        uint8_t c = s_RxBuffer.Pop();
     
         return (char)c;
     }
     
     int Print(const std::string& str)
     {
-        for (auto &c : str)
+        for (auto &&c : str)
             usart_write(c);
     
         return str.size();
@@ -74,7 +75,7 @@ namespace Serial
     
     uint8_t Available()
     {
-        return ((RxBufferSize + _rxBufHead - _rxBufTail) % RxBufferSize);
+        return s_RxBuffer.Size();
     }
 } // namespace Serial
 
@@ -87,12 +88,5 @@ void putchar_(char ch)
 extern "C" void USART1_IRQHandler(void)
 {
     if (LL_USART_IsActiveFlag_RXNE(USART1))
-    {
-        uint8_t i = (_rxBufHead + 1) % 64;
-        if (i != _rxBufTail)
-        {
-            _rxBuffer[_rxBufHead] = LL_USART_ReceiveData8(USART1);
-            _rxBufHead = i;
-        }
-    }
+        s_RxBuffer.Push(LL_USART_ReceiveData8(USART1));
 }
