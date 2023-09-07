@@ -9,6 +9,7 @@ namespace Containers
     {
     public:
         using value_t = T;
+        using iterator = T*;
 
         constexpr FIFO() = default;
 
@@ -16,7 +17,7 @@ namespace Containers
         {
             if (Full())
             {
-                if (!OverwriteEnabled()) return 0;
+                if (Overwrite == false) return 0;
 
                 IncrementTail();
             }
@@ -37,12 +38,11 @@ namespace Containers
         {
             m_Head = m_Tail = 0;
         }
-        constexpr size_t Size() const noexcept { return (m_Head - m_Tail); }
-        constexpr size_t Capacity() const noexcept { return Length; }
-        constexpr size_t Space() const noexcept { return (Length - Size()); }
-        constexpr bool Empty() const noexcept { return (Size() == 0); }
-        constexpr bool Full() const noexcept { return (Size() == Length); }
-        constexpr bool OverwriteEnabled() const noexcept { return Overwrite; }
+        [[nodiscard]] constexpr size_t Size() const noexcept { return (m_Head - m_Tail); }
+        [[nodiscard]] constexpr size_t Capacity() const noexcept { return Length; }
+        [[nodiscard]] constexpr size_t Space() const noexcept { return (Length - Size()); }
+        [[nodiscard]] constexpr bool Empty() const noexcept { return (Size() == 0); }
+        [[nodiscard]] constexpr bool Full() const noexcept { return (Size() == Length); }
 
     protected:
         T m_Buffer[Length] = {};
@@ -57,10 +57,6 @@ namespace Containers
                 m_Tail -= Length;
             }
         }
-        constexpr size_t Index(size_t input) const noexcept
-        {
-            return (input % Length);
-        }
         constexpr void IncrementHead() noexcept
         {
             ++m_Head;
@@ -70,6 +66,10 @@ namespace Containers
         {
             ++m_Tail;
             Wrap();
+        }
+        [[nodiscard]] constexpr static size_t Index(size_t input) noexcept
+        {
+            return (input % Length);
         }
     };
 }

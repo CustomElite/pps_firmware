@@ -136,8 +136,8 @@ namespace External::LTC2440
     private:
         buffer_t m_conversions;
         OverSampling m_OSR;
-        uint16_t m_dmaTxBuffer[2];
-        uint16_t m_dmaRxBuffer[2];
+        uint16_t m_dmaTxBuffer[DMA_DATA_SIZE];
+        uint16_t m_dmaRxBuffer[DMA_DATA_SIZE];
 
     private:
         void spi_read_blocking() noexcept
@@ -161,10 +161,10 @@ namespace External::LTC2440
             LL_DMA_SetDataLength(DMA, RxChannel, DMA_DATA_SIZE);
             LL_DMA_SetDataLength(DMA, TxChannel, DMA_DATA_SIZE);
 
-            LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);
-
             LL_DMA_EnableChannel(DMA, RxChannel);
             LL_DMA_EnableChannel(DMA, TxChannel);
+
+            LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);
         }
         void dma_reset() noexcept
         {
@@ -183,21 +183,24 @@ namespace External::LTC2440
             LL_DMA_DisableChannel(DMA, RxChannel);
             LL_DMA_DisableChannel(DMA, TxChannel);
         }
-        int32_t average_buffer() noexcept
+        uint32_t average_buffer() noexcept
         {
-            int32_t output = 0;
+            uint32_t output = 0;
             size_t cnt = 0;
 
-            for ( ; !m_conversions.Empty(); ++cnt )
+            while (!m_conversions.Empty())
+            {
                 output += m_conversions.Pop();
+                ++cnt;
+            }
 
             output = (cnt == 4) ? (output >> 2) : (output / cnt);
 
-            return (output >> EXTRA_BITS);
+            return output;
         }
-        [[nodiscard]]int32_t build_conversion() const
+        [[nodiscard]]uint32_t build_conversion() const
         {
-            int32_t output = ((m_dmaRxBuffer[0] << 16u) | m_dmaRxBuffer[1]);
+            uint32_t output = ((m_dmaRxBuffer[0] << 16u) | m_dmaRxBuffer[1]);
             return output;
         }
     };
