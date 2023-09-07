@@ -9,6 +9,8 @@ uint32_t GetMilli(void)
 
 void ErrorHandler(const char* err_str)
 {
+    Serial::Printf("Critical Error: %s\n", err_str);
+    
     __disable_irq();
     while (1)
     {

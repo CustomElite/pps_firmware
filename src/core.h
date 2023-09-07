@@ -14,6 +14,7 @@
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 
+#include "serial/serial.h"
 #include "external/ltc2440.hpp"
 
 #include <cstdint>

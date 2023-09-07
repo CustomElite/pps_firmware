@@ -47,7 +47,8 @@ namespace External::LTC2440
         CS_Pin(cs_pin),
         DMA(dma), 
         RxChannel(rx_channel), 
-        TxChannel(tx_channel)
+        TxChannel(tx_channel),
+        OSR(osr)
         {}
     };
 
@@ -59,32 +60,46 @@ namespace External::LTC2440
         template <typename... Args>
         LTC2440(Args&&... args) : Properties{ std::forward<Args>(args)... }
         {
-            m_TX.byte[3] = OSR;
+            m_dmaTxBuffer[0] = (OSR << 8u);
         }
         void Enable() noexcept
         {
             LL_SPI_Enable(SPI);
+
+            ClearConversion();
+
+            LL_DMA_EnableIT_TC(DMA, RxChannel);
+            LL_DMA_EnableIT_TE(DMA, RxChannel);
+
+            LL_DMA_ConfigAddresses(DMA, RxChannel, LL_SPI_DMA_GetRegAddr(SPI), (uint32_t)m_dmaRxBuffer, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+            LL_DMA_ConfigAddresses(DMA, TxChannel, (uint32_t)m_dmaTxBuffer, LL_SPI_DMA_GetRegAddr(SPI), LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
         }
         void Disable() noexcept
         {
             LL_SPI_Disable(SPI);
+
+            LL_DMA_DisableIT_TC(DMA, RxChannel);
+            LL_DMA_DisableIT_TE(DMA, RxChannel);
         }
         void EoC_Callback() noexcept
         {
-            spi_read_blocking();
+            dma_start_read();
         }
-        bool ConversionReady() const { return (!m_conversions.Empty()); }
+        void DMA_Callback() noexcept
+        {
+            dma_reset();
+        }
+        bool ConversionReady() const { return m_conversions.Full(); }
         bool ClearConversion() noexcept
         {
             LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);     
-            LL_mDelay( 1U );
-    
-            LL_SPI_TransmitData8(SPI, m_TX.byte[3]);
+
+            LL_SPI_TransmitData8(SPI, OSR);
             while(!LL_SPI_IsActiveFlag_TXE(SPI));
-    
+
             while (!LL_SPI_IsActiveFlag_RXNE(SPI));
             LL_SPI_ReceiveData8(SPI);
-    
+
             LL_GPIO_SetOutputPin(CS_Port, CS_Pin);
     
             return true;
@@ -93,26 +108,36 @@ namespace External::LTC2440
         {
             if (m_conversions.Empty()) return 0;
 
-            int32_t output = m_conversions.Pop();
+            int32_t output = average_buffer();
+            output >>= EXTRA_BITS;
             output -= BIN_OFFSET;
             
             return output;
         }
+        float ToVoltage(int32_t conversion) const noexcept
+        {
+            if (!conversion) return 0.0f;
+
+            float volts;
+            volts = (float)conversion;
+            volts /= (float)(MAX_CODE + 1u);
+            volts *= V_REF;
+
+            return volts;
+        }
 
     private:
-        constexpr static const float V_REF = 4.096f;
-        constexpr static const uint32_t MAX_CODE = 0xFFFFFF;
-        constexpr static const uint32_t BIN_OFFSET = 0x10000000;
+        constexpr static float V_REF = 4.092f;
+        constexpr static uint32_t MAX_CODE = 0xFFFFFF;
+        constexpr static uint32_t BIN_OFFSET = 0x800000;
+        constexpr static uint8_t EXTRA_BITS = 5u;
+        constexpr static uint8_t DMA_DATA_SIZE = 2u;
 
     private:
         buffer_t m_conversions;
         OverSampling m_OSR;
-
-        union {
-            uint8_t byte[4];
-            uint16_t word[2];
-            int32_t dword;
-        } m_TX, m_RX;
+        uint16_t m_dmaTxBuffer[2];
+        uint16_t m_dmaRxBuffer[2];
 
     private:
         void spi_read_blocking() noexcept
@@ -121,15 +146,59 @@ namespace External::LTC2440
             LL_mDelay( 1U );
             for (int8_t i = 1; i >= 0; --i)
             {
-                LL_SPI_TransmitData16(SPI, m_TX.word[i]);
+                LL_SPI_TransmitData16(SPI, m_dmaTxBuffer[i]);
                 while(!LL_SPI_IsActiveFlag_TXE(SPI));
         
                 while (!LL_SPI_IsActiveFlag_RXNE(SPI));
-                m_RX.word[i] = LL_SPI_ReceiveData16(SPI);
+                m_dmaRxBuffer[i] = LL_SPI_ReceiveData16(SPI);
             }
             LL_GPIO_SetOutputPin(CS_Port, CS_Pin);
 
-            m_conversions.Push(m_RX.dword);
+            m_conversions.Push(build_conversion());
+        }
+        void dma_start_read() noexcept
+        {
+            LL_DMA_SetDataLength(DMA, RxChannel, DMA_DATA_SIZE);
+            LL_DMA_SetDataLength(DMA, TxChannel, DMA_DATA_SIZE);
+
+            LL_GPIO_ResetOutputPin(CS_Port, CS_Pin);
+
+            LL_DMA_EnableChannel(DMA, RxChannel);
+            LL_DMA_EnableChannel(DMA, TxChannel);
+        }
+        void dma_reset() noexcept
+        {
+            LL_GPIO_SetOutputPin(CS_Port, CS_Pin);
+            
+            if (LL_DMA_IsActiveFlag_TC4(DMA))
+            {
+                LL_DMA_ClearFlag_TC4(DMA);
+                m_conversions.Push(build_conversion());
+            }
+            else if (LL_DMA_IsActiveFlag_TE4(DMA))
+            {
+                LL_DMA_ClearFlag_TE4(DMA);
+            }
+
+            LL_DMA_DisableChannel(DMA, RxChannel);
+            LL_DMA_DisableChannel(DMA, TxChannel);
+        }
+        int32_t average_buffer() noexcept
+        {
+            int32_t output = 0;
+            size_t cnt = 0;
+
+            for ( ; !m_conversions.Empty(); ++cnt )
+                output += m_conversions.Pop();
+
+            output = (cnt == 4) ? (output >> 2) : (output / cnt);
+
+            return (output >> EXTRA_BITS);
+        }
+        [[nodiscard]]int32_t build_conversion() const
+        {
+            int32_t output = ((m_dmaRxBuffer[0] << 16u) | m_dmaRxBuffer[1]);
+            return output;
         }
     };
 }

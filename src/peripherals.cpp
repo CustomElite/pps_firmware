@@ -73,9 +73,9 @@ void DMA1_Init()
     dmaInit.Mode = LL_DMA_MODE_NORMAL;
     dmaInit.Priority = LL_DMA_PRIORITY_VERYHIGH;
     dmaInit.PeriphOrM2MSrcIncMode = LL_DMA_PERIPH_NOINCREMENT;
-    dmaInit.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
+    dmaInit.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_HALFWORD;
     dmaInit.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT;
-    dmaInit.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_BYTE;
+    dmaInit.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_HALFWORD;
     LL_DMA_Init(DMA1, ADC_RX_DMA_CHANNEL, &dmaInit);
 
     dmaInit.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH;
@@ -115,4 +115,7 @@ void SPI2_Init()
     spiConfig.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
     spiConfig.CRCPoly = 10;
     LL_SPI_Init(SPI2, &spiConfig);
+
+    LL_SPI_EnableDMAReq_RX(SPI2);
+    LL_SPI_EnableDMAReq_TX(SPI2);
 }

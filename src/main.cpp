@@ -1,6 +1,6 @@
 #include "core.h"
 #include "peripherals.h"
-#include "serial/serial.h"
+
 
 adc_t ADC(SPI2, ADC_CS_PORT, ADC_CS_PIN, DMA1, ADC_RX_DMA_CHANNEL, ADC_TX_DMA_CHANNEL);
 
@@ -15,13 +15,14 @@ int main(void)
     SysClock_Config();
     GPIO_Init();
     SPI2_Init();
+    DMA1_Init();
+
     ADC.Enable();
+
     Serial::Init();
     Serial::Print("Hello World!!!\n");
 
     uint32_t timer = 0;
-    uint32_t average = 0;
-    size_t avgIdx = 0;
     
     /* Infinite loop */
     while (1)
@@ -29,22 +30,18 @@ int main(void)
         if ((GetMilli() - timer) >= 1000U)
         {
             LL_GPIO_TogglePin(STATUS_LED_PORT, STATUS_LED_PIN);
-
-            while (ADC.ConversionReady())
-            {
-                average += ADC.GetConversion();
-                ++avgIdx;
-            }
-
-            average /= avgIdx;
-            Serial::Printf("ADC Average: %d | # Reads: %d\n", average, avgIdx);
-            average = 0;
-            avgIdx = 0;
             timer = GetMilli();
         }
         
         if (Serial::Available())
         {
+            Serial::Printf("%c", Serial::Read());
+        }
+
+        if (ADC.ConversionReady())
+        {
+            int32_t conv = ADC.GetConversion();
+            Serial::Printf("ADC Code: %d | Voltage: %0.6fv\n", conv, ADC.ToVoltage(conv));
         }
     }
 }
