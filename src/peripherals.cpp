@@ -30,15 +30,12 @@ void SysClock_Config(void)
 void GPIO_Init(void)
 {
     /* GPIO Ports Clock Enable */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB | LL_APB2_GRP1_PERIPH_GPIOC);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB); // | LL_APB2_GRP1_PERIPH_GPIOC);
 
-    LL_GPIO_SetOutputPin(STATUS_LED_PORT, STATUS_LED_PIN);
-    LL_GPIO_SetOutputPin(ADC_CS_PORT, ADC_CS_PIN);
-    
-    /* Status LED Pin */
-    LL_GPIO_SetPinMode(STATUS_LED_PORT, STATUS_LED_PIN, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinSpeed(STATUS_LED_PORT, STATUS_LED_PIN, LL_GPIO_SPEED_FREQ_LOW);
-    LL_GPIO_SetPinOutputType(STATUS_LED_PORT, STATUS_LED_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    /* DAC Chip Select Pin */
+    LL_GPIO_SetPinMode(DAC_SYNC_PORT, DAC_SYNC_PIN, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinSpeed(DAC_SYNC_PORT, DAC_SYNC_PIN, LL_GPIO_SPEED_FREQ_HIGH);
+    LL_GPIO_SetPinOutputType(DAC_SYNC_PORT, DAC_SYNC_PIN, LL_GPIO_OUTPUT_PUSHPULL);
 
     /* ADC Chip Select Pin */
     LL_GPIO_SetPinMode(ADC_CS_PORT, ADC_CS_PIN, LL_GPIO_MODE_OUTPUT);
@@ -80,6 +77,37 @@ void DMA1_Init()
 
     dmaInit.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH;
     LL_DMA_Init(DMA1, ADC_TX_DMA_CHANNEL, &dmaInit);
+}
+
+void SPI1_Init()
+{
+    LL_SPI_InitTypeDef spiConfig = {0};
+    LL_GPIO_InitTypeDef gpioConfig = {0};
+        
+    /* GPIO Initialization */
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+
+    /* Sclk & MOSI */
+    gpioConfig.Pin = LL_GPIO_PIN_5 | LL_GPIO_PIN_7;
+    gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
+    gpioConfig.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(GPIOA, &gpioConfig);
+
+    /* Peripheral Initialization*/
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
+
+    spiConfig.TransferDirection = LL_SPI_FULL_DUPLEX;
+    spiConfig.Mode = LL_SPI_MODE_MASTER;
+    spiConfig.DataWidth = LL_SPI_DATAWIDTH_16BIT;
+    spiConfig.ClockPolarity = LL_SPI_POLARITY_LOW;
+    spiConfig.ClockPhase = LL_SPI_PHASE_1EDGE;
+    spiConfig.NSS = LL_SPI_NSS_SOFT;
+    spiConfig.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV8;
+    spiConfig.BitOrder = LL_SPI_MSB_FIRST;
+    spiConfig.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
+    spiConfig.CRCPoly = 10;
+    LL_SPI_Init(SPI1, &spiConfig);
 }
 
 void SPI2_Init()
