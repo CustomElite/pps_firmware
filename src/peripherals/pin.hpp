@@ -48,6 +48,10 @@ namespace IO
     template <Port port, uint32_t pin>
     class Pin
     {
+    public:
+        static constexpr uint32_t PinIndex = pin;
+        static constexpr uint32_t PortIndex = (uint32_t)port;
+
     protected:
         using port_t = GPIO_TypeDef*;
         static constexpr uint32_t rcc_mask = (1u << (PortIndex + 2u));

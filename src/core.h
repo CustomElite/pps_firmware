@@ -15,7 +15,6 @@
 
 #include "serial/serial.h"
 #include "external/ltc2440.hpp"
-#include "peripherals/pin.hpp"
 
 #include <cstdint>
 
@@ -27,9 +26,8 @@
   #define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003)
 #endif
 
-using STAT_LED = IO::Pin<IO::Port::C, 13>;
-using ADC_CS = IO::Pin<IO::Port::B, 12>;
-using DAC_CS = IO::Pin<IO::Port::B, 10>;
+#define STATUS_LED_PIN 	    LL_GPIO_PIN_13
+#define STATUS_LED_PORT 	  GPIOC
 
 #define ADC_RX_DMA_CHANNEL  LL_DMA_CHANNEL_4
 #define ADC_RX_DMA_IRQn     DMA1_Channel4_IRQn

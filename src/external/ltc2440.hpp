@@ -58,7 +58,7 @@ namespace External::LTC2440
         using buffer_t = Containers::FIFO<int32_t, 4u>;
 
         template <typename... Args>
-        LTC2440(Args&&... args) : Properties{ std::forward<Args>(args)... }
+        LTC2440(Args&&... args) : Properties(args...)
         {
             m_dmaTxBuffer[0] = (OSR << 8u);
         }
