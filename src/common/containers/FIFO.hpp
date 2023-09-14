@@ -9,7 +9,7 @@ namespace Containers
     {
     public:
         using value_t = T;
-        using iterator = T*;
+        using iterator = value_t*;
 
         constexpr FIFO() = default;
 
@@ -38,6 +38,8 @@ namespace Containers
         {
             m_Head = m_Tail = 0;
         }
+        iterator begin() noexcept { return (m_Buffer + Index(m_Tail)); }
+        iterator end() noexcept { return (m_Buffer + Index(m_Head)); }
         [[nodiscard]] constexpr size_t Size() const noexcept { return (m_Head - m_Tail); }
         [[nodiscard]] constexpr size_t Capacity() const noexcept { return Length; }
         [[nodiscard]] constexpr size_t Space() const noexcept { return (Length - Size()); }
@@ -67,7 +69,7 @@ namespace Containers
             ++m_Tail;
             Wrap();
         }
-        [[nodiscard]] constexpr static size_t Index(size_t input) noexcept
+        [[nodiscard]] constexpr size_t Index(size_t input) noexcept
         {
             return (input % Length);
         }

@@ -149,8 +149,7 @@ namespace External::LTC2440
                 LL_SPI_TransmitData16(SPI, m_dmaTxBuffer[i]);
                 while(!LL_SPI_IsActiveFlag_TXE(SPI));
         
-                while (!LL_SPI_IsActiveFlag_RXNE(SPI));
-                m_dmaRxBuffer[i] = LL_SPI_ReceiveData16(SPI);
+                
             }
             LL_GPIO_SetOutputPin(CS_Port, CS_Pin);
 
